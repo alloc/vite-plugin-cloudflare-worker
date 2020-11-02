@@ -1,0 +1,10 @@
+{
+  "include": ["src"],
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "lib": ["es2018", "WebWorker"],
+    "moduleResolution": "node",
+    "strict": true,
+    "target": "esnext"
+  }
+}
