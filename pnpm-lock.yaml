@@ -8,7 +8,7 @@ dependencies:
   etag: 1.8.1
   html-minifier: 4.0.0
   recrawl-sync: 2.0.0
-  rollup-plugin-esbuild: 2.5.2_esbuild@0.8.0+rollup@2.32.1
+  rollup-plugin-esbuild: /@cush/rollup-plugin-esbuild/2.5.2-canary.138_rollup@2.33.1
   rollup-plugin-terser: 7.0.2_rollup@2.33.1
   strip-bom: 4.0.0
 devDependencies:
@@ -43,6 +43,19 @@ packages:
     dev: false
     resolution:
       integrity: sha512-pnF2c2hhHyC520CmYYKq3hGOS0kipkGBgRnp3z7wx7lDzykaUwQW3wPQmiX9YtbHUcgUu1qQtzstixmeYMwQoA==
+  /@cush/rollup-plugin-esbuild/2.5.2-canary.138_rollup@2.33.1:
+    dependencies:
+      '@rollup/pluginutils': 4.1.0_rollup@2.33.1
+      joycon: 2.2.5
+      strip-json-comments: 3.1.1
+    dev: false
+    engines:
+      node: '>=12'
+    peerDependencies:
+      esbuild: ^0.8.0
+      rollup: '*'
+    resolution:
+      integrity: sha512-o/XoRSKRHgPoBW7fbcXWC1c6mP1VvAx3NKN5uJXtYoEh5PDigXOf5kLsXX2xwMDMi7UxXK1RUuf7QFeBKlAifg==
   /@rollup/plugin-node-resolve/10.0.0_rollup@2.33.1:
     dependencies:
       '@rollup/pluginutils': 3.1.0_rollup@2.33.1
@@ -86,11 +99,11 @@ packages:
       rollup: ^1.20.0||^2.0.0
     resolution:
       integrity: sha512-GksZ6pr6TpIjHm8h9lSQ8pi8BE9VeubNT0OMJ3B5uZJ8pz73NPiqOtCog/x2/QzM1ENChPKxMDhiQuRHsqc+lg==
-  /@rollup/pluginutils/4.1.0_rollup@2.32.1:
+  /@rollup/pluginutils/4.1.0_rollup@2.33.1:
     dependencies:
       estree-walker: 2.0.1
       picomatch: 2.2.2
-      rollup: 2.32.1
+      rollup: 2.33.1
     dev: false
     engines:
       node: '>= 8.0.0'
@@ -418,20 +431,6 @@ packages:
       typescript: ^4.0.2
     resolution:
       integrity: sha512-7mxoQ6PcmCkBE5ZhrjGDL4k42XLy8BkSqpiRi1MipwiGs+7lwi4mQkp2afX+OzzLjJp/TGM8llfe8uayIUhPEw==
-  /rollup-plugin-esbuild/2.5.2_esbuild@0.8.0+rollup@2.32.1:
-    dependencies:
-      '@rollup/pluginutils': 4.1.0_rollup@2.32.1
-      esbuild: 0.8.0
-      joycon: 2.2.5
-      strip-json-comments: 3.1.1
-    dev: false
-    engines:
-      node: '>=12'
-    peerDependencies:
-      esbuild: ^0.6.0
-      rollup: '*'
-    resolution:
-      integrity: sha512-E4q3ac1AlMd0m0ZRYffdiorOt2eZcxfbdPaqBLs7JLnPE8krgIAihOD6cTUc54UJjoOMA9WcY63TR+JKWLzYNw==
   /rollup-plugin-terser/7.0.2_rollup@2.33.1:
     dependencies:
       '@babel/code-frame': 7.10.4
@@ -444,15 +443,6 @@ packages:
       rollup: ^2.0.0
     resolution:
       integrity: sha512-w3iIaU4OxcF52UUXiZNsNeuXIMDvFrr+ZXK6bFZ0Q60qyVfq4uLptoS4bbq3paG3x216eQllFZX7zt6TIImguQ==
-  /rollup/2.32.1:
-    dev: false
-    engines:
-      node: '>=10.0.0'
-    hasBin: true
-    optionalDependencies:
-      fsevents: 2.1.3
-    resolution:
-      integrity: sha512-Op2vWTpvK7t6/Qnm1TTh7VjEZZkN8RWgf0DHbkKzQBwNf748YhXbozHVefqpPp/Fuyk/PQPAnYsBxAEtlMvpUw==
   /rollup/2.33.1:
     engines:
       node: '>=10.0.0'
@@ -565,7 +555,7 @@ specifiers:
   recrawl-sync: ^2.0.0
   rollup: 2.33.1
   rollup-plugin-dts: ^1.4.10
-  rollup-plugin-esbuild: ^2.5.2
+  rollup-plugin-esbuild: 'npm:@cush/rollup-plugin-esbuild@2.5.2-canary.138'
   rollup-plugin-terser: ^7.0.2
   strip-bom: ^4.0.0
   typescript: ^4.0.0
