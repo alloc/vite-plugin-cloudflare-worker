@@ -4,13 +4,22 @@ import type { Options as TerserOptions } from 'rollup-plugin-terser'
 
 export type Config = {
   /**
-   * Entry module in JavaScript or TypeScript.
-   */
-  main: string
-  /**
-   * Script filename relative to `outDir` in Vite config.
+   * The worker's package root, relative to `root` in Vite config.
    *
-   * When `upload` is defined, this option has no default value.
+   * The `package.json` and `wrangler.toml` files of this directory are
+   * loaded if they exist.
+   */
+  root?: string
+  /**
+   * Entry module in JavaScript or TypeScript.
+   *
+   * Only required if `root` option is undefined.
+   */
+  main?: string
+  /**
+   * The bundled worker's filename, relative to `outDir` in Vite config.
+   *
+   * When the `upload` option is defined, this defaults to undefined.
    *
    * @default "workers/[name].js"
    */
@@ -37,9 +46,13 @@ export type Config = {
    */
   minifyHtml?: HtmlMinifyOptions | boolean
   /**
-   * When defined, the worker is uploaded after a successful build.
+   * Upload the bundled worker after a successful build, using the
+   * Cloudflare API.
+   *
+   * When `true`, the `root` option must be defined and its
+   * `wrangler.toml` file must contain `name` and `account_id`.
    */
-  upload?: UploadConfig
+  upload?: UploadConfig | boolean
 }
 
 export type UploadConfig = {
