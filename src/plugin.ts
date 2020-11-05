@@ -4,7 +4,6 @@ import createResolvePlugin from '@rollup/plugin-node-resolve'
 import createEsbuildPlugin from 'rollup-plugin-esbuild'
 import { terser } from 'rollup-plugin-terser'
 import { recrawl } from 'recrawl-sync'
-import chalk from 'chalk'
 import etag from 'etag'
 import path from 'path'
 import fs from 'fs'
@@ -39,7 +38,33 @@ export default (config: Config): VitePlugin => ({
       ? config.upload.authToken || process.env.CLOUDFLARE_AUTH_TOKEN
       : null
 
-    builds.push({
+    let script: string
+    ctx.afterAll(async () => {
+      if (config.upload) {
+        if (!authToken) {
+          return ctx.log.warn(
+            'Cannot upload Cloudflare worker without auth token'
+          )
+        }
+        const { scriptId } = config.upload
+        const uploading = ctx.log.start(
+          `Cloudflare worker "${scriptId}" is being uploaded...`
+        )
+        try {
+          await uploadScript(script, {
+            ...config.upload,
+            authToken,
+          })
+          uploading.done(`Cloudflare worker "${scriptId}" was uploaded!`)
+        } catch (err) {
+          uploading.fail(
+            `Cloudflare worker "${scriptId}" failed to upload. ` + err.message
+          )
+        }
+      }
+    })
+
+    ctx.build({
       write: !!config.dest && !authToken,
       input: config.main,
       output: {
@@ -51,7 +76,7 @@ export default (config: Config): VitePlugin => ({
       plugins: [
         createEsbuildPlugin({
           target: 'esnext',
-          sourceMap: !!viteConfig.sourcemap,
+          sourceMap: !!ctx.sourcemap,
           loaders: {
             '.ts': 'ts',
             '.js': 'js',
@@ -62,31 +87,13 @@ export default (config: Config): VitePlugin => ({
         createResolvePlugin({
           extensions: ['.ts', '.mjs', '.js', '.json'],
         }),
-        createServePlugin(
-          path.resolve(viteConfig.root, viteConfig.outDir),
-          config
-        ),
+        createServePlugin(ctx.outDir, config),
         ...(config.plugins || []),
         config.minify !== false &&
           (terser(config.minify === true ? {} : config.minify) as any),
       ],
       async onResult(result) {
-        if (config.upload) {
-          if (!authToken) {
-            return console.warn(
-              chalk.yellow('[warn]') +
-                ' Cannot upload Cloudflare worker without auth token\n'
-            )
-          }
-          try {
-            await uploadScript(result.assets[0].code, {
-              ...config.upload,
-              authToken,
-            })
-          } catch (err) {
-            throw Error('Failed to upload Cloudflare worker. ' + err.message)
-          }
-        }
+        script = result.assets[0].code
       },
     })
   },
