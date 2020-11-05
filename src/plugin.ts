@@ -123,13 +123,13 @@ export default (config: Config): VitePlugin => ({
     })
 
     ctx.build({
-      write: !!config.dest && !authToken,
+      write: !!config.dest,
       input: config.main,
       output: {
         file: config.dest,
         format: 'cjs',
         entryFileNames:
-          !config.dest && !authToken ? 'workers/[name].js' : undefined,
+          !config.dest && !uploadConfig ? 'workers/[name].js' : undefined,
       },
       plugins: [
         createEsbuildPlugin({
