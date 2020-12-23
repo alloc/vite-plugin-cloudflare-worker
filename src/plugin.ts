@@ -41,6 +41,8 @@ export default (config: Config): VitePlugin => ({
           throw PluginError(
             `The "main" module from package.json could not be found`
           )
+
+        config.main = path.join(config.root, config.main)
       }
 
       if (config.upload === true) {
