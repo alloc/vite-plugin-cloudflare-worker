@@ -1,9 +1,10 @@
 import type { Plugin as VitePlugin } from 'vite'
-import type { Plugin as RollupPlugin } from 'rollup'
+import type { Plugin as RollupPlugin, InputOption, OutputChunk } from 'rollup'
 import createResolvePlugin from '@rollup/plugin-node-resolve'
 import createEsbuildPlugin from 'rollup-plugin-esbuild'
 import { terser } from 'rollup-plugin-terser'
-import { recrawl } from 'recrawl-sync'
+import { crawl } from 'recrawl-sync'
+import { rollup } from 'rollup'
 import toml from 'toml'
 import etag from 'etag'
 import path from 'path'
@@ -18,11 +19,15 @@ export type { serve } from './serve'
 const namingRules = /^[a-z]([a-z0-9_-]{0,61}[a-z0-9])?$/i
 
 export default (config: Config): VitePlugin => ({
-  configureBuild(ctx) {
+  name: 'vite:cloudflare-worker',
+  enforce: 'post',
+  configResolved(viteConfig) {
+    let input: InputOption | undefined = config.main
     if (config.root) {
-      const workerDir = path.resolve(ctx.root, config.root)
+      const workerDir = path.resolve(viteConfig.root, config.root)
 
-      if (!config.main) {
+      // Infer the "input" module from package.json
+      if (!input) {
         const workerPkgPath = path.join(workerDir, 'package.json')
 
         if (!fs.existsSync(workerPkgPath))
@@ -42,7 +47,11 @@ export default (config: Config): VitePlugin => ({
             `The "main" module from package.json could not be found`
           )
 
-        config.main = path.join(config.root, config.main)
+        input = path.join(config.root, config.main)
+        if (!config.dest) {
+          const name = path.basename(workerDir)
+          input = { [name]: input }
+        }
       }
 
       if (config.upload === true) {
@@ -70,7 +79,7 @@ export default (config: Config): VitePlugin => ({
         config.upload = { scriptId, accountId }
       }
     } else {
-      if (!config.main) {
+      if (!input) {
         throw PluginError(`Expected "main" or "root" option to be defined`)
       }
       if (config.upload === true) {
@@ -98,71 +107,82 @@ export default (config: Config): VitePlugin => ({
       ? uploadConfig.authToken || process.env.CLOUDFLARE_AUTH_TOKEN
       : null
 
-    let script: string
-    ctx.afterAll(async () => {
-      if (uploadConfig) {
-        if (!authToken)
-          return ctx.log.warn(
-            'Cannot upload Cloudflare worker without auth token'
-          )
+    let workerChunk: OutputChunk
+    this.generateBundle = async (_, bundle) => {
+      const viteBuild = viteConfig.build
 
-        const { scriptId } = uploadConfig
-        const uploading = ctx.log.start(
-          `Cloudflare worker "${scriptId}" is being uploaded...`
-        )
-        try {
-          await uploadScript(script, {
-            ...uploadConfig,
-            authToken,
-          })
-          uploading.done(`Cloudflare worker "${scriptId}" was uploaded!`)
-        } catch (err) {
-          uploading.fail(
-            `Cloudflare worker "${scriptId}" failed to upload. ` + err.message
-          )
-        }
-      }
-    })
+      const workerBundle = await rollup({
+        input,
+        plugins: [
+          createEsbuildPlugin({
+            target: 'esnext',
+            sourceMap: !!viteBuild.sourcemap,
+            loaders: {
+              '.ts': 'ts',
+              '.js': 'js',
+              '.mjs': 'js',
+              '.json': 'json',
+            },
+          }),
+          createResolvePlugin({
+            extensions: ['.ts', '.mjs', '.js', '.json'],
+          }),
+          createServePlugin(viteBuild.outDir, config),
+          ...(config.plugins || []),
+          config.minify !== false &&
+            (terser(config.minify === true ? {} : config.minify) as any),
+        ],
+      })
 
-    ctx.build({
-      write: !!config.dest,
-      input: config.main,
-      output: {
+      const { output } = await workerBundle.generate({
         file: config.dest,
         format: 'cjs',
         entryFileNames:
           !config.dest && !uploadConfig ? 'workers/[name].js' : undefined,
-      },
-      plugins: [
-        createEsbuildPlugin({
-          target: 'esnext',
-          sourceMap: !!ctx.sourcemap,
-          loaders: {
-            '.ts': 'ts',
-            '.js': 'js',
-            '.mjs': 'js',
-            '.json': 'json',
-          },
-        }),
-        createResolvePlugin({
-          extensions: ['.ts', '.mjs', '.js', '.json'],
-        }),
-        createServePlugin(ctx.outDir, config),
-        ...(config.plugins || []),
-        config.minify !== false &&
-          (terser(config.minify === true ? {} : config.minify) as any),
-      ],
-      async onResult(result) {
-        script = result.assets[0].code
-      },
-    })
+        sourcemap: viteBuild.sourcemap,
+      })
+
+      workerChunk = output[0]
+      if (config.dest || !uploadConfig) {
+        bundle[workerChunk.fileName] = workerChunk
+      }
+    }
+
+    this.buildEnd = async error => {
+      if (!error && uploadConfig) {
+        if (!authToken)
+          return viteConfig.logger.warn(
+            'Cannot upload Cloudflare worker without auth token'
+          )
+
+        const { scriptId } = uploadConfig
+        viteConfig.logger.info(
+          `Cloudflare worker "${scriptId}" is being uploaded...`
+        )
+
+        try {
+          await uploadScript(workerChunk.code, {
+            ...uploadConfig,
+            authToken,
+          })
+          viteConfig.logger.info(
+            `Cloudflare worker "${scriptId}" was uploaded!`
+          )
+        } catch (err) {
+          viteConfig.logger.error(
+            `Cloudflare worker "${scriptId}" failed to upload. ` + err.message
+          )
+        }
+      }
+    }
   },
 })
 
-function createServePlugin(root: string, config: Config): RollupPlugin {
-  const crawl = recrawl({
-    only: toArray(config.inlineGlobs),
-  })
+function createServePlugin(outDir: string, config: Config): RollupPlugin {
+  const { serveGlobs } = config
+  const globsByRoot = Array.isArray(serveGlobs)
+    ? { [outDir]: serveGlobs }
+    : serveGlobs || {}
 
   const assetsId = '\0_worker_assets.js'
   const servePath = path.join(__dirname, 'index.mjs')
@@ -170,20 +190,22 @@ function createServePlugin(root: string, config: Config): RollupPlugin {
     name: 'vite-cloudflare-worker:serve',
     resolveId(id, parent) {
       if (id == './assets' && parent == servePath) {
-        if (config.inlineGlobs) {
+        if (serveGlobs) {
           return assetsId
         }
         throw Error(
-          '[vite-cloudflare-worker] Must set "inlineGlobs" before using "serve" function'
+          '[vite-cloudflare-worker] Must set "serveGlobs" before using "serve" function'
         )
       }
     },
     load(id) {
       if (id == assetsId) {
         let lines = ['export default {']
-        crawl(root, file =>
-          lines.push(`  '${file}': ${inlineAsset(root, file, config)},`)
-        )
+        for (const root in globsByRoot) {
+          crawl(root, { only: globsByRoot[root] }).forEach(file =>
+            lines.push(`  '${file}': ${inlineAsset(root, file, config)},`)
+          )
+        }
         lines.push('}')
         return lines.join('\n')
       }
@@ -221,10 +243,6 @@ const escapeMap: any = {
 function getMimeType(file: string) {
   const ext = path.extname(file)
   return ext == '.html' ? MimeType.HTML : MimeType.TXT
-}
-
-function toArray<T>(arg: T): T extends void ? [] : T extends any[] ? T : T[] {
-  return arg === void 0 ? [] : Array.isArray(arg) ? arg : ([arg] as any)
 }
 
 function findFile(root: string, names: string[]) {

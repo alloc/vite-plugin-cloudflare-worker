@@ -22,8 +22,15 @@ export default {
 
 ### Configuration
 
-- `main: string`  
+- `main?: string`  
   The entry module in JavaScript or TypeScript.
+
+- `root?: string`  
+  The root directory of the worker. This option is useful when your worker
+  has its own `package.json` and `worker.toml` files.
+  The `main` option is inferred from its `package.json` file, and the `upload`
+  option is inferred from its `worker.toml` file.
+  If `main` is undefined, this option is required.
 
 - `dest?: string`  
   The bundle filename, relative to `outDir` in Vite config.  
@@ -33,7 +40,7 @@ export default {
 - `plugins?: RollupPlugin[]`  
   Custom plugins to apply after the default plugins (but before minifying).
 
-- `inlineGlobs?: string | string[]`  
+- `serveGlobs?: string[] | { [root: string]: string[] }`  
   Matching files are bundled with the script. Use the `serve` function (exported
   by this plugin) in your script to easily serve the bundled content with the
   proper response headers (`ETag`, `Content-Type`, `Content-Length`).
@@ -50,4 +57,3 @@ export default {
     - `scriptId: string` (any name you like)
     - `accountId: string` (found on the homepage of your Cloudflare account)
     - `authToken?: string` (defaults to `process.env.CLOUDFLARE_AUTH_TOKEN`)
-

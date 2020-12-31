@@ -32,9 +32,13 @@ export type Config = {
    * Matching files are bundled with the script, and served
    * by the `serve` function exported by this plugin.
    *
-   * Globs are relative to the `outDir` in Vite config.
+   * When you pass an object, its keys are used as the root
+   * directory to crawl in search of paths matching the given globs.
+   *
+   * The default root is the `outDir` option in your Vite config.
+   * Custom roots are resolved relative to the default root.
    */
-  inlineGlobs?: string | string[]
+  serveGlobs?: string[] | { [root: string]: string[] }
   /**
    * Control how the script is minified.
    * @default true
