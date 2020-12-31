@@ -24,11 +24,11 @@ export default (config: Config): VitePlugin => ({
   configResolved(viteConfig) {
     let input: InputOption | undefined = config.main
     if (config.root) {
-      const workerDir = path.resolve(viteConfig.root, config.root)
+      config.root = path.resolve(viteConfig.root, config.root)
 
       // Infer the "input" module from package.json
       if (!input) {
-        const workerPkgPath = path.join(workerDir, 'package.json')
+        const workerPkgPath = path.join(config.root, 'package.json')
 
         if (!fs.existsSync(workerPkgPath))
           throw PluginError(
@@ -36,7 +36,7 @@ export default (config: Config): VitePlugin => ({
           )
 
         const workerPkg = JSON.parse(fs.readFileSync(workerPkgPath, 'utf8'))
-        config.main = findFile(workerDir, [
+        config.main = findFile(config.root, [
           workerPkg.main,
           'index.ts',
           'index.js',
@@ -49,13 +49,13 @@ export default (config: Config): VitePlugin => ({
 
         input = path.join(config.root, config.main)
         if (!config.dest) {
-          const name = path.basename(workerDir)
+          const name = path.basename(config.root)
           input = { [name]: input }
         }
       }
 
       if (config.upload === true) {
-        const workerInfoPath = path.join(workerDir, 'wrangler.toml')
+        const workerInfoPath = path.join(config.root, 'wrangler.toml')
 
         if (!fs.existsSync(workerInfoPath))
           throw PluginError(`Cannot find wrangler.toml`)
@@ -184,6 +184,12 @@ function createServePlugin(outDir: string, config: Config): RollupPlugin {
     ? { [outDir]: serveGlobs }
     : serveGlobs || {}
 
+  // Both the `outDir` (from vite.config.js) and worker-specific `root` option
+  // are searched for paths matching the `serveGlobs` array.
+  if (config.root && Array.isArray(serveGlobs)) {
+    globsByRoot[config.root] = serveGlobs
+  }
+
   const assetsId = '\0_worker_assets.js'
   const servePath = path.join(__dirname, 'index.mjs')
   return {
@@ -202,7 +208,9 @@ function createServePlugin(outDir: string, config: Config): RollupPlugin {
       if (id == assetsId) {
         let lines = ['export default {']
         for (const root in globsByRoot) {
-          crawl(root, { only: globsByRoot[root] }).forEach(file =>
+          crawl(path.resolve(outDir, root), {
+            only: globsByRoot[root],
+          }).forEach(file =>
             lines.push(`  '${file}': ${inlineAsset(root, file, config)},`)
           )
         }
