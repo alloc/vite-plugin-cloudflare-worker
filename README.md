@@ -20,6 +20,12 @@ export default {
 }
 ```
 
+### Install
+
+```sh
+yarn add -D vite-plugin-cloudflare-worker@next
+```
+
 ### Configuration
 
 - `main?: string`  
