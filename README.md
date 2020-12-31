@@ -52,7 +52,10 @@ yarn add -D vite-plugin-cloudflare-worker@next
 - `serveGlobs?: string[] | { [root: string]: string[] }`  
   Matching files are bundled with the script. Use the `serve` function (exported
   by this plugin) in your script to easily serve the bundled content with the
-  proper response headers (`ETag`, `Content-Type`, `Content-Length`).
+  proper response headers (`ETag`, `Content-Type`, `Content-Length`).  
+
+  When an array is passed, both the `outDir` (from vite.config.js) and the 
+  worker-specific `root` directory are searched for matching paths.
 
 - `minify?: object | boolean`  
   Customize how the script is minified, or pass `false` to disable minification.
