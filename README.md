@@ -20,6 +20,10 @@ export default {
 }
 ```
 
+See the [`2.0` branch][2] for Vite 2 compatible docs.
+
+[2]: https://github.com/alloc/vite-plugin-cloudflare-worker/tree/2.0
+
 ### Configuration
 
 - `main: string`  
