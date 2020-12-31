@@ -1,6 +1,6 @@
 {
   "name": "vite-plugin-cloudflare-worker",
-  "version": "0.1.2",
+  "version": "2.0.0-alpha.1",
   "description": "Generate a Cloudflare worker",
   "author": "Alec Larson",
   "license": "MIT",
