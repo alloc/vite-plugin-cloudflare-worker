@@ -133,6 +133,7 @@ export default (config: Config): VitePlugin => ({
       })
 
       const { output } = await workerBundle.generate({
+        dir: outDir,
         file: config.dest,
         format: 'cjs',
         entryFileNames:
