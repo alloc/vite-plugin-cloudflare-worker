@@ -21,10 +21,10 @@ const namingRules = /^[a-z]([a-z0-9_-]{0,61}[a-z0-9])?$/i
 export default (config: Config): VitePlugin => ({
   name: 'vite:cloudflare-worker',
   enforce: 'post',
-  configResolved(viteConfig) {
+  configResolved(vite) {
     let input: InputOption | undefined = config.main
     if (config.root) {
-      config.root = path.resolve(viteConfig.root, config.root)
+      config.root = path.resolve(vite.root, config.root)
 
       // Infer the "input" module from package.json
       if (!input) {
@@ -109,14 +109,12 @@ export default (config: Config): VitePlugin => ({
 
     let workerChunk: OutputChunk
     this.generateBundle = async (_, bundle) => {
-      const viteBuild = viteConfig.build
-
       const workerBundle = await rollup({
         input,
         plugins: [
           createEsbuildPlugin({
             target: 'esnext',
-            sourceMap: !!viteBuild.sourcemap,
+            sourceMap: !!vite.build.sourcemap,
             loaders: {
               '.ts': 'ts',
               '.js': 'js',
@@ -127,7 +125,7 @@ export default (config: Config): VitePlugin => ({
           createResolvePlugin({
             extensions: ['.ts', '.mjs', '.js', '.json'],
           }),
-          createServePlugin(viteBuild.outDir, config),
+          createServePlugin(vite.build.outDir, config),
           ...(config.plugins || []),
           config.minify !== false &&
             (terser(config.minify === true ? {} : config.minify) as any),
@@ -139,7 +137,7 @@ export default (config: Config): VitePlugin => ({
         format: 'cjs',
         entryFileNames:
           !config.dest && !uploadConfig ? 'workers/[name].js' : undefined,
-        sourcemap: viteBuild.sourcemap,
+        sourcemap: vite.build.sourcemap,
       })
 
       workerChunk = output[0]
@@ -151,25 +149,21 @@ export default (config: Config): VitePlugin => ({
     this.buildEnd = async error => {
       if (!error && uploadConfig) {
         if (!authToken)
-          return viteConfig.logger.warn(
+          return vite.logger.warn(
             'Cannot upload Cloudflare worker without auth token'
           )
 
         const { scriptId } = uploadConfig
-        viteConfig.logger.info(
-          `Cloudflare worker "${scriptId}" is being uploaded...`
-        )
+        vite.logger.info(`Cloudflare worker "${scriptId}" is being uploaded...`)
 
         try {
           await uploadScript(workerChunk.code, {
             ...uploadConfig,
             authToken,
           })
-          viteConfig.logger.info(
-            `Cloudflare worker "${scriptId}" was uploaded!`
-          )
+          vite.logger.info(`Cloudflare worker "${scriptId}" was uploaded!`)
         } catch (err) {
-          viteConfig.logger.error(
+          vite.logger.error(
             `Cloudflare worker "${scriptId}" failed to upload. ` + err.message
           )
         }
