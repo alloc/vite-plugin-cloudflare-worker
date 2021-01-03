@@ -22,12 +22,12 @@ export default (config: Config): VitePlugin => ({
   name: 'vite:cloudflare-worker',
   enforce: 'post',
   configResolved(vite) {
-    let input: InputOption | undefined = config.main
+    let main: string | undefined = config.main
     if (config.root) {
       config.root = path.resolve(vite.root, config.root)
 
       // Infer the "input" module from package.json
-      if (!input) {
+      if (!main) {
         const workerPkgPath = path.join(config.root, 'package.json')
 
         if (!fs.existsSync(workerPkgPath))
@@ -36,22 +36,12 @@ export default (config: Config): VitePlugin => ({
           )
 
         const workerPkg = JSON.parse(fs.readFileSync(workerPkgPath, 'utf8'))
-        config.main = findFile(config.root, [
-          workerPkg.main,
-          'index.ts',
-          'index.js',
-        ])
+        main = findFile(config.root, [workerPkg.main, 'index.ts', 'index.js'])
 
-        if (!config.main)
+        if (!main)
           throw PluginError(
             `The "main" module from package.json could not be found`
           )
-
-        input = path.join(config.root, config.main)
-        if (!config.dest) {
-          const name = path.basename(config.root)
-          input = { [name]: input }
-        }
       }
 
       if (config.upload === true) {
@@ -79,12 +69,20 @@ export default (config: Config): VitePlugin => ({
         config.upload = { scriptId, accountId }
       }
     } else {
-      if (!input) {
+      if (!main) {
         throw PluginError(`Expected "main" or "root" option to be defined`)
       }
       if (config.upload === true) {
         throw PluginError(`Cannot use "upload: true" without "root" option`)
       }
+    }
+
+    main = path.resolve(config.root || vite.root, main)
+
+    let input: InputOption = main
+    if (!config.dest && config.root) {
+      const name = path.basename(config.root)
+      input = { [name]: main }
     }
 
     const uploadConfig = config.upload
