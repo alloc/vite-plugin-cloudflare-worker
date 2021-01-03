@@ -107,6 +107,8 @@ export default (config: Config): VitePlugin => ({
 
     let workerChunk: OutputChunk
     this.generateBundle = async (_, bundle) => {
+      const outDir = path.resolve(vite.root, vite.build.outDir)
+
       const workerBundle = await rollup({
         input,
         plugins: [
@@ -123,7 +125,7 @@ export default (config: Config): VitePlugin => ({
           createResolvePlugin({
             extensions: ['.ts', '.mjs', '.js', '.json'],
           }),
-          createServePlugin(vite.build.outDir, config),
+          createServePlugin(outDir, config),
           ...(config.plugins || []),
           config.minify !== false &&
             (terser(config.minify === true ? {} : config.minify) as any),
